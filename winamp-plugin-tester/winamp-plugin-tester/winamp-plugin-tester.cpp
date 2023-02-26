@@ -184,9 +184,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
                         EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_ENABLED);
                         EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_ENABLED);
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_ENABLED);
 				    }
 			    }
                 break;
@@ -209,17 +206,28 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     ZeroMemory(lpWinampVisModule->waveformData, sizeof(unsigned char) * sizeof(lpWinampVisModule->waveformData));
 
                     auto resInit = lpWinampVisModule->Init(lpWinampVisModule);
+            
+                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
+                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
+                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
+                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
+                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
+                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_ENABLED);
                 }
                 break;
             case IDM_PLUGIN_RENDER:
 				EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_DISABLED);
 				EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_ENABLED);
+                stop = false;
 				renderingThread = std::make_unique<std::thread>(renderingCalls);
                 break;
             case IDM_PLUGIN_STOPRENDERING:
                 EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
                 EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
                 stop = true;
+                renderingThread.get()->join();
+                renderingThread.release();
+                renderingThread = std::unique_ptr<std::thread>(nullptr);
                 break;
             case IDM_PLUGIN_QUIT:
                 EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_ENABLED);
@@ -245,6 +253,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
     case WM_DESTROY:
+
+        stop = true;
+        if (renderingThread != std::unique_ptr<std::thread>(nullptr))
+        {
+            if (renderingThread.get()->joinable())
+                renderingThread.get()->join();
+        }
+        renderingThread.release();
+
         if (handleLib != NULL) FreeLibrary(handleLib);
         PostQuitMessage(0);
         break;
@@ -295,6 +312,6 @@ void renderingCalls()
         }
 
         auto resRender = lpWinampVisModule->Render(lpWinampVisModule);
-        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+        std::this_thread::sleep_for(std::chrono::milliseconds(15));
     } while (!stop);
 }
