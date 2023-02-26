@@ -150,10 +150,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 break;
             case IDM_PLUGIN_LOAD:
 			    {
-				    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\monkey\\vis_monkey.dll", NULL, NULL);
-				    //auto handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\LHDance\\LHDance\\vis_lhd.dll", NULL, NULL);
-				    //auto handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\others\\vis_milk2.dll", NULL, NULL);
-				    auto handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_rave.dll", NULL, NULL);
+				    handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\monkey\\vis_monkey.dll", NULL, NULL);
+                    //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_monkey.dll", NULL, NULL);
+                    // C:\Program Files (x86)\Winamp\Plugins
+                    //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
+                    //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_avs.dll", NULL, NULL);
+                    //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_milk2.dll", NULL, NULL);
+                    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
+                    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\LHDance\\Plugins\\vis_lhd.dll", NULL, NULL);
+				    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\others\\vis_milk2.dll", NULL, NULL);
+				    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_rave.dll", NULL, NULL);
 				    if (handleLib == NULL)
 				    {
 					    auto dwError = GetLastError();
@@ -195,8 +201,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case IDM_PLUGIN_INIT:
                 {
                     lpWinampVisModule->nCh = 2;
-                    lpWinampVisModule->latencyMs = 0;
-                    lpWinampVisModule->delayMs = 0;
+                    lpWinampVisModule->latencyMs = 1;
+                    lpWinampVisModule->delayMs = 15;
                     lpWinampVisModule->sRate = 44100;
                     lpWinampVisModule->spectrumNCh = 2;
                     //lpWinampVisModule->spectrumData;
@@ -204,6 +210,19 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     lpWinampVisModule->waveformNCh = 2;
                     //lpWinampVisModule->waveformData;
                     ZeroMemory(lpWinampVisModule->waveformData, sizeof(unsigned char) * sizeof(lpWinampVisModule->waveformData));
+
+                    std::random_device rd; // To get a random seed.
+                    std::mt19937 mt(rd()); // The actual randomizer.
+                    std::uniform_int_distribution<int> dist(0, 255);
+
+					for (int i = 0; i < 2; ++i)
+					{
+						for (int j = 0; j < 576; ++j)
+						{
+							lpWinampVisModule->spectrumData[i][j] = dist(mt);
+							lpWinampVisModule->waveformData[i][j] = dist(mt);
+						}
+					}
 
                     auto resInit = lpWinampVisModule->Init(lpWinampVisModule);
             
