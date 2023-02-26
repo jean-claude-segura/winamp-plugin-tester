@@ -38,6 +38,14 @@ struct winampVisModule
     procUserData userData;
 };
 
+/// <summary>
+/// Call "winampVisGetHeader" from a winamp vis plugin dll.
+/// 
+/// </summary>
+/// <returns></returns>
+/// <remarks>https://slideplayer.com/slide/5224459/</remarks>
+/// <remarks>http://www.sulaco.co.za/winamp_tut.htm</remarks>
+/// <remarks>https://learn.microsoft.com/en-us/windows/win32/dlls/using-run-time-dynamic-linking</remarks>
 typedef winampVisModule* (__cdecl* GetModule)(int);
 
 struct winampVisHeader

@@ -3,6 +3,11 @@
 
 #include "framework.h"
 #include "winamp-plugin-tester.h"
+#include <memory>
+#include <thread>
+#include <chrono>
+#include <random>
+#include <atomic>
 
 #define MAX_LOADSTRING 100
 
@@ -55,7 +60,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     return (int) msg.wParam;
 }
 
-
+static std::unique_ptr<std::thread> renderingThread;
+void renderingCalls();
+static std::atomic<bool> stop = false;
 
 //
 //  FONCTION : MyRegisterClass()
@@ -97,8 +104,12 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Stocke le handle d'instance dans la variable globale
 
+   /*
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+      */
+   HWND hWnd = CreateWindow(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+       CW_USEDEFAULT, CW_USEDEFAULT, 400, 300, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
    {
@@ -174,6 +185,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                         EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_ENABLED);
                         EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_ENABLED);
                         EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
+                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
                         EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_ENABLED);
 				    }
 			    }
@@ -200,15 +212,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
                 break;
             case IDM_PLUGIN_RENDER:
-                {
-                    auto resInit = lpWinampVisModule->Render(lpWinampVisModule);
-                }
+				EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_DISABLED);
+				EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_ENABLED);
+				renderingThread = std::make_unique<std::thread>(renderingCalls);
+                break;
+            case IDM_PLUGIN_STOPRENDERING:
+                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
+                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
+                stop = true;
                 break;
             case IDM_PLUGIN_QUIT:
                 EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_ENABLED);
                 EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
                 EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
                 EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_DISABLED);
+                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
                 EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_DISABLED);
                 lpWinampVisModule->Quit(lpWinampVisModule);
                 if(handleLib != NULL) FreeLibrary(handleLib);
@@ -254,4 +272,29 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return (INT_PTR)FALSE;
+}
+
+void renderingCalls()
+{
+    ZeroMemory(lpWinampVisModule->spectrumData, sizeof(unsigned char) * sizeof(lpWinampVisModule->spectrumData));
+    ZeroMemory(lpWinampVisModule->waveformData, sizeof(unsigned char) * sizeof(lpWinampVisModule->waveformData));
+
+    std::random_device rd; // To get a random seed.
+    std::mt19937 mt(rd()); // The actual randomizer.
+    std::uniform_int_distribution<int> dist(0, 255);
+    
+    do
+    {
+        for(int i = 0; i < 2; ++i)
+        {
+            for (int j = 0; j < 576; ++j)
+            {
+                lpWinampVisModule->spectrumData[i][j] = dist(mt);
+                lpWinampVisModule->waveformData[i][j] = dist(mt);
+            }
+        }
+
+        auto resRender = lpWinampVisModule->Render(lpWinampVisModule);
+        std::this_thread::sleep_for(std::chrono::milliseconds(25));
+    } while (!stop);
 }
