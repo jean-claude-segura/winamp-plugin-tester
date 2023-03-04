@@ -63,6 +63,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 static std::unique_ptr<std::thread> renderingThread;
 void renderingCalls();
 static std::atomic<bool> stop = false;
+void dealWithError(HWND hWnd);
 
 //
 //  FONCTION : MyRegisterClass()
@@ -150,7 +151,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 break;
             case IDM_PLUGIN_LOAD:
 			    {
-				    handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\monkey\\vis_monkey.dll", NULL, NULL);
+				    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\monkey\\vis_monkey.dll", NULL, NULL);
                     //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_monkey.dll", NULL, NULL);
                     // C:\Program Files (x86)\Winamp\Plugins
                     //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
@@ -159,37 +160,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                     //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
                     //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\LHDance\\Plugins\\vis_lhd.dll", NULL, NULL);
 				    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\others\\vis_milk2.dll", NULL, NULL);
-				    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_rave.dll", NULL, NULL);
+				    handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_rave.dll", NULL, NULL);
 				    if (handleLib == NULL)
 				    {
-					    auto dwError = GetLastError();
-
-					    LPTSTR lpMsgBuf;
-
-					    FormatMessage(
-						    FORMAT_MESSAGE_ALLOCATE_BUFFER |
-						    FORMAT_MESSAGE_FROM_SYSTEM |
-						    FORMAT_MESSAGE_IGNORE_INSERTS,
-						    NULL,
-						    dwError,
-						    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-						    (LPTSTR)&lpMsgBuf,
-						    0, NULL);
-
-					    //std::wcout << (LPTSTR)lpMsgBuf << std::endl;
-                        MessageBox(hWnd, lpMsgBuf, L"Erreur au chargement de la dll", MB_ICONERROR);
+                        dealWithError(hWnd);
 				    }
 				    else
 				    {
 					    WinampVisGetHeader lpFunc = (WinampVisGetHeader)GetProcAddress(handleLib, "winampVisGetHeader");
-					    auto lpModule = lpFunc();
-					    lpWinampVisModule = lpModule->getModule(0);
-                        lpWinampVisModule->hwndParent = hWnd;
-                        lpWinampVisModule->hDllInstance = handleLib;
+                        if (lpFunc == NULL)
+                        {
+                            dealWithError(hWnd);
+                        }
+					    else
+                        {
+                            auto lpModule = lpFunc();
+                            lpWinampVisModule = lpModule->getModule(0);
+                            lpWinampVisModule->hwndParent = hWnd;
+                            lpWinampVisModule->hDllInstance = handleLib;
 
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_ENABLED);
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_ENABLED);
+                            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
+                            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_ENABLED);
+                            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_ENABLED);
+                        }
 				    }
 			    }
                 break;
@@ -312,8 +305,8 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
 
 void renderingCalls()
 {
-    ZeroMemory(lpWinampVisModule->spectrumData, sizeof(unsigned char) * sizeof(lpWinampVisModule->spectrumData));
-    ZeroMemory(lpWinampVisModule->waveformData, sizeof(unsigned char) * sizeof(lpWinampVisModule->waveformData));
+    ZeroMemory(lpWinampVisModule->spectrumData, sizeof(lpWinampVisModule->spectrumData));
+    ZeroMemory(lpWinampVisModule->waveformData, sizeof(lpWinampVisModule->waveformData));
 
     std::random_device rd; // To get a random seed.
     std::mt19937 mt(rd()); // The actual randomizer.
@@ -330,7 +323,34 @@ void renderingCalls()
             }
         }
 
-        auto resRender = lpWinampVisModule->Render(lpWinampVisModule);
-        std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        try
+        {
+            auto resRender = lpWinampVisModule->Render(lpWinampVisModule);
+            std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        }
+        catch (...)
+        {
+            stop = true;
+        }
     } while (!stop);
+}
+
+void dealWithError(HWND hWnd)
+{
+    auto dwError = GetLastError();
+
+    LPTSTR lpMsgBuf;
+
+    FormatMessage(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        dwError,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR)&lpMsgBuf,
+        0, NULL);
+
+    //std::wcout << (LPTSTR)lpMsgBuf << std::endl;
+    MessageBox(hWnd, lpMsgBuf, L"Erreur au chargement de la dll", MB_ICONERROR);
 }
