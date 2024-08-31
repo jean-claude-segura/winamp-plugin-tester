@@ -8,6 +8,7 @@
 #include <chrono>
 #include <random>
 #include <atomic>
+#include "Commdlg.h"
 
 #define MAX_LOADSTRING 100
 
@@ -151,39 +152,80 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 break;
             case IDM_PLUGIN_LOAD:
 			    {
-				    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\monkey\\vis_monkey.dll", NULL, NULL);
-                    //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_monkey.dll", NULL, NULL);
-                    // C:\Program Files (x86)\Winamp\Plugins
-                    //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
-                    //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_avs.dll", NULL, NULL);
-                    //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_milk2.dll", NULL, NULL);
-                    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
-                    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\LHDance\\Plugins\\vis_lhd.dll", NULL, NULL);
-				    //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\others\\vis_milk2.dll", NULL, NULL);
-				    handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_rave.dll", NULL, NULL);
-				    if (handleLib == NULL)
-				    {
-                        dealWithError(hWnd);
-				    }
-				    else
-				    {
-					    WinampVisGetHeader lpFunc = (WinampVisGetHeader)GetProcAddress(handleLib, "winampVisGetHeader");
-                        if (lpFunc == NULL)
+                    WCHAR strFile[128];
+                    ZeroMemory(&strFile, sizeof(strFile));
+                    OPENFILENAME open;
+                    ZeroMemory(&open, sizeof(open));
+                    open.lStructSize = sizeof(OPENFILENAME);
+                    open.hwndOwner = hWnd;
+                    open.nFileOffset = 0;
+                    open.lpstrFile = strFile;
+                    open.lpstrFile[0] = '\0';
+                    open.nMaxFile = sizeof(strFile);
+                    open.lpstrInitialDir = L"C:\\Winamp\\Plugins\\";
+                    //open.lpstrInitialDir = L"C:\\PROGRA~2\\Winamp\\Plugins\\";
+                    open.lpstrFilter = L"Dll\0vis*.dll\0";
+                    open.lpstrTitle = L"Plugin Winamp";
+                    open.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+                    if(GetOpenFileName(&open))
+                    {
+
+                        //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\monkey\\vis_monkey.dll", NULL, NULL);
+                        //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_monkey.dll", NULL, NULL);
+                        // C:\Program Files (x86)\Winamp\Plugins
+                        //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
+                        //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_avs.dll", NULL, NULL);
+                        //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_milk2.dll", NULL, NULL);
+                        //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
+                        //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\LHDance\\Plugins\\vis_lhd.dll", NULL, NULL);
+                        //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\others\\vis_milk2.dll", NULL, NULL);
+                        //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_rave.dll", NULL, NULL);
+                        handleLib = LoadLibraryEx(strFile, NULL, NULL);
+                        if (handleLib == NULL)
                         {
                             dealWithError(hWnd);
                         }
-					    else
+                        else
                         {
-                            auto lpModule = lpFunc();
-                            lpWinampVisModule = lpModule->getModule(0);
-                            lpWinampVisModule->hwndParent = hWnd;
-                            lpWinampVisModule->hDllInstance = handleLib;
+                            WinampVisGetHeader lpFunc = (WinampVisGetHeader)GetProcAddress(handleLib, "winampVisGetHeader");
+                            if (lpFunc == NULL)
+                            {
+                                dealWithError(hWnd);
+                            }
+                            else
+                            {
+                                auto lpModule = lpFunc();
+                                lpWinampVisModule = lpModule->getModule(0);
+                                lpWinampVisModule->hwndParent = hWnd;
+                                lpWinampVisModule->hDllInstance = handleLib;
 
-                            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
-                            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_ENABLED);
-                            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_ENABLED);
+                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
+                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_ENABLED);
+                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_ENABLED);
+                            }
                         }
-				    }
+                    }
+                    else
+                    {
+                        /*
+                        auto dwError = CommDlgExtendedError();
+                        LPTSTR lpMsgBuf;
+
+                        FormatMessage(
+                            FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                            FORMAT_MESSAGE_FROM_SYSTEM |
+                            FORMAT_MESSAGE_IGNORE_INSERTS,
+                            NULL,
+                            dwError,
+                            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                            (LPTSTR)&lpMsgBuf,
+                            0, NULL);
+
+                        //std::wcout << (LPTSTR)lpMsgBuf << std::endl;
+                        MessageBox(hWnd, lpMsgBuf, L"Erreur au chargement de la dll", MB_ICONERROR);
+                        */
+                    }
 			    }
                 break;
             case IDM_PLUGIN_CONFIG:
@@ -194,7 +236,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             case IDM_PLUGIN_INIT:
                 {
                     lpWinampVisModule->nCh = 2;
-                    lpWinampVisModule->latencyMs = 1;
+                    lpWinampVisModule->latencyMs = 0;
                     lpWinampVisModule->delayMs = 15;
                     lpWinampVisModule->sRate = 44100;
                     lpWinampVisModule->spectrumNCh = 2;
@@ -219,12 +261,15 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                     auto resInit = lpWinampVisModule->Init(lpWinampVisModule);
             
-                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
-                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
-                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
-                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
-                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
-                    EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_ENABLED);
+                    if(0 == resInit)
+                    {
+                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
+                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
+                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
+                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
+                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
+                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_ENABLED);
+                    }
                 }
                 break;
             case IDM_PLUGIN_RENDER:
@@ -250,6 +295,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_DISABLED);
                 lpWinampVisModule->Quit(lpWinampVisModule);
                 if(handleLib != NULL) FreeLibrary(handleLib);
+                handleLib = NULL;
                 break;
             default:
                 return DefWindowProc(hWnd, message, wParam, lParam);
@@ -314,6 +360,7 @@ void renderingCalls()
     
     do
     {
+        // Loop supposed to emulate sound...
         for(int i = 0; i < 2; ++i)
         {
             for (int j = 0; j < 576; ++j)
@@ -326,12 +373,14 @@ void renderingCalls()
         try
         {
             auto resRender = lpWinampVisModule->Render(lpWinampVisModule);
-            std::this_thread::sleep_for(std::chrono::milliseconds(15));
         }
         catch (...)
         {
             stop = true;
         }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(15));
+
     } while (!stop);
 }
 
