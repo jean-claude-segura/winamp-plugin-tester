@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Fichiers d%27en-tête\Winamp">
+      <UniqueIdentifier>{1b5b0708-27cb-4cc2-ae8a-2dcc15b6f066}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -29,6 +32,30 @@
     </ClInclude>
     <ClInclude Include="WinampVisualPlugin.h">
       <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="winamp\DSP.H">
+      <Filter>Fichiers d%27en-tête\Winamp</Filter>
+    </ClInclude>
+    <ClInclude Include="winamp\GEN.H">
+      <Filter>Fichiers d%27en-tête\Winamp</Filter>
+    </ClInclude>
+    <ClInclude Include="winamp\IN2.H">
+      <Filter>Fichiers d%27en-tête\Winamp</Filter>
+    </ClInclude>
+    <ClInclude Include="winamp\ipc_pe.h">
+      <Filter>Fichiers d%27en-tête\Winamp</Filter>
+    </ClInclude>
+    <ClInclude Include="winamp\OUT.H">
+      <Filter>Fichiers d%27en-tête\Winamp</Filter>
+    </ClInclude>
+    <ClInclude Include="winamp\wa_dlg.h">
+      <Filter>Fichiers d%27en-tête\Winamp</Filter>
+    </ClInclude>
+    <ClInclude Include="winamp\wa_hotkeys.h">
+      <Filter>Fichiers d%27en-tête\Winamp</Filter>
+    </ClInclude>
+    <ClInclude Include="winamp\wa_ipc.h">
+      <Filter>Fichiers d%27en-tête\Winamp</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

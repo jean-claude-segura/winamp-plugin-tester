@@ -134,6 +134,14 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="winamp-plugin-tester.h" />
     <ClInclude Include="WinampVisualPlugin.h" />
+    <ClInclude Include="winamp\DSP.H" />
+    <ClInclude Include="winamp\GEN.H" />
+    <ClInclude Include="winamp\IN2.H" />
+    <ClInclude Include="winamp\ipc_pe.h" />
+    <ClInclude Include="winamp\OUT.H" />
+    <ClInclude Include="winamp\wa_dlg.h" />
+    <ClInclude Include="winamp\wa_hotkeys.h" />
+    <ClInclude Include="winamp\wa_ipc.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="winamp-plugin-tester.cpp" />

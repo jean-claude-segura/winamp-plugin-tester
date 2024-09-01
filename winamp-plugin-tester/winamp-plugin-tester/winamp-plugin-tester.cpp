@@ -124,6 +124,25 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
+static int winampCommands(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    auto winampCommand = int(lParam);
+    switch (winampCommand)
+    {
+    case IPC_ISPLAYING:
+        return 1;
+        break;
+    case IPC_GET_EMBEDIF: // Envoyé par le plugin à la construction de sa fenêtre.
+        break;
+    case IPC_SETVISWND: // Envoyé par le plugin pour signifier son caractère de visualisation.
+        if (wParam == NULL) // wParam doit contenir le handle de la fenêtre du plugin ou NULL si supprimé
+            ;
+        break;
+    default: // A suivre...
+        return 0;
+    }
+}
+
 //
 //  FONCTION : WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -260,9 +279,36 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 					}
 
                     auto resInit = lpWinampVisModule->Init(lpWinampVisModule);
-            
+
                     if(0 == resInit)
                     {
+                        // Sent by plugin before displaying its window :
+                        // SendMessage(this_mod->hwndParent, WM_WA_IPC, (int)g_hwnd, IPC_SETVISWND);
+                        /*MSG msg;
+                        BOOL bRet;
+                        while (bRet = GetMessage(&msg, NULL, 0, 0) != 0)
+                        {
+                            if (bRet == -1)
+                            {
+                            }
+                            else if (msg.message != WM_WA_IPC)
+                            {
+                                TranslateMessage(&msg);
+                                DispatchMessage(&msg);
+                            }
+                            else
+                            {
+                                // Le plugin a fait son boulot...
+                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
+                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
+                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
+                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
+                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
+                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_ENABLED);
+                                break;
+                            }
+                        }*/
+
                         EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
                         EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
                         EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
@@ -311,7 +357,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
     case WM_DESTROY:
-
         stop = true;
         if (renderingThread != std::unique_ptr<std::thread>(nullptr))
         {
@@ -322,11 +367,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         if (handleLib != NULL) FreeLibrary(handleLib);
         PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
-    }
-    return 0;
+		break;
+	case WM_WA_IPC: // Winamp messages.
+	{
+        return winampCommands(hWnd, message, wParam, lParam);
+	}
+	break;
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+	}
+	return 0;
 }
 
 // Gestionnaire de messages pour la boîte de dialogue À propos de.

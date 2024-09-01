@@ -1,6 +1,7 @@
 #pragma once
 
 #include <windows.h>
+#include "Winamp\wa_ipc.h"
 
 struct winampVisModule;
 
