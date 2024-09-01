@@ -26,8 +26,8 @@ struct winampVisModule
     // the data is filled in according to the respective Nch entry
     unsigned _int32 spectrumNCh;     // Number of channels
     unsigned _int32 waveformNCh;     // Number of channels
-    unsigned char spectrumData[2][576];     // waveform data   (values from 0-255)
-    unsigned char waveformData[2][576];     // spectrum data   (values from 0-255)
+    unsigned char spectrumData[2][576];     // spectrum data   (values from 0-255)
+    unsigned char waveformData[2][576];     // waveform data   (values from 0-255)
 
     // functions that winamp calls to configure the plugin, initialise ...
         //userData: procedure; cdecl;  // user data, optional*/

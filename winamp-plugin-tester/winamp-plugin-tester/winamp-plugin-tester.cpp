@@ -124,7 +124,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    return TRUE;
 }
 
-static int winampCommands(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+static int WinampCommands(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     auto winampCommand = int(lParam);
     switch (winampCommand)
@@ -135,12 +135,175 @@ static int winampCommands(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case IPC_GET_EMBEDIF: // Envoyé par le plugin à la construction de sa fenêtre.
         break;
     case IPC_SETVISWND: // Envoyé par le plugin pour signifier son caractère de visualisation.
-        if (wParam == NULL) // wParam doit contenir le handle de la fenêtre du plugin ou NULL si supprimé
-            ;
+        if (wParam != NULL) // wParam doit contenir le handle de la fenêtre du plugin ou NULL si supprimé
+        {
+            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
+            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
+            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
+            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
+            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
+            EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_ENABLED);
+        }
         break;
     default: // A suivre...
-        return 0;
+		return DefWindowProc(hWnd, message, wParam, lParam);
     }
+	return 0;
+}
+
+LRESULT CALLBACK WndCommand(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	int wmId = LOWORD(wParam);
+	// Analyse les sélections de menu :
+	switch (wmId)
+	{
+	case IDM_ABOUT:
+		DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
+		break;
+	case IDM_EXIT:
+		DestroyWindow(hWnd);
+		break;
+	case IDM_PLUGIN_LOAD:
+	{
+		WCHAR strFile[128];
+		ZeroMemory(&strFile, sizeof(strFile));
+		OPENFILENAME open;
+		ZeroMemory(&open, sizeof(open));
+		open.lStructSize = sizeof(OPENFILENAME);
+		open.hwndOwner = hWnd;
+		open.nFileOffset = 0;
+		open.lpstrFile = strFile;
+		open.lpstrFile[0] = '\0';
+		open.nMaxFile = sizeof(strFile);
+		open.lpstrInitialDir = L"C:\\Winamp\\Plugins\\";
+		//open.lpstrInitialDir = L"C:\\PROGRA~2\\Winamp\\Plugins\\";
+		open.lpstrFilter = L"Dll\0vis*.dll\0";
+		open.lpstrTitle = L"Plugin Winamp";
+		open.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+		if (GetOpenFileName(&open))
+		{
+
+			//handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\monkey\\vis_monkey.dll", NULL, NULL);
+			//handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_monkey.dll", NULL, NULL);
+			// C:\Program Files (x86)\Winamp\Plugins
+			//handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
+			//handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_avs.dll", NULL, NULL);
+			//handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_milk2.dll", NULL, NULL);
+			//handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
+			//handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\LHDance\\Plugins\\vis_lhd.dll", NULL, NULL);
+			//handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\others\\vis_milk2.dll", NULL, NULL);
+			//handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_rave.dll", NULL, NULL);
+			handleLib = LoadLibraryEx(strFile, NULL, NULL);
+			if (handleLib == NULL)
+			{
+				dealWithError(hWnd);
+			}
+			else
+			{
+				WinampVisGetHeader lpFunc = (WinampVisGetHeader)GetProcAddress(handleLib, "winampVisGetHeader");
+				if (lpFunc == NULL)
+				{
+					dealWithError(hWnd);
+				}
+				else
+				{
+					auto lpModule = lpFunc();
+					lpWinampVisModule = lpModule->getModule(0);
+					lpWinampVisModule->hwndParent = hWnd;
+					lpWinampVisModule->hDllInstance = handleLib;
+
+					EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
+					EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_ENABLED);
+					EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_ENABLED);
+				}
+			}
+		}
+		else
+		{
+			/*
+			auto dwError = CommDlgExtendedError();
+			LPTSTR lpMsgBuf;
+
+			FormatMessage(
+				FORMAT_MESSAGE_ALLOCATE_BUFFER |
+				FORMAT_MESSAGE_FROM_SYSTEM |
+				FORMAT_MESSAGE_IGNORE_INSERTS,
+				NULL,
+				dwError,
+				MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+				(LPTSTR)&lpMsgBuf,
+				0, NULL);
+
+			//std::wcout << (LPTSTR)lpMsgBuf << std::endl;
+			MessageBox(hWnd, lpMsgBuf, L"Erreur au chargement de la dll", MB_ICONERROR);
+			*/
+		}
+	}
+	break;
+	case IDM_PLUGIN_CONFIG:
+	{
+		auto resConfig = lpWinampVisModule->Config(lpWinampVisModule);
+	}
+	break;
+	case IDM_PLUGIN_INIT:
+	{
+		lpWinampVisModule->nCh = 2;
+		lpWinampVisModule->latencyMs = 0;
+		lpWinampVisModule->delayMs = 15;
+		lpWinampVisModule->sRate = 44100;
+		lpWinampVisModule->spectrumNCh = 2;
+		//lpWinampVisModule->spectrumData;
+		ZeroMemory(lpWinampVisModule->spectrumData, sizeof(unsigned char) * sizeof(lpWinampVisModule->spectrumData));
+		lpWinampVisModule->waveformNCh = 2;
+		//lpWinampVisModule->waveformData;
+		ZeroMemory(lpWinampVisModule->waveformData, sizeof(unsigned char) * sizeof(lpWinampVisModule->waveformData));
+
+		auto resInit = lpWinampVisModule->Init(lpWinampVisModule);
+
+		if (0 == resInit)
+		{
+			// Sent by plugin before displaying its window :
+			// SendMessage(this_mod->hwndParent, WM_WA_IPC, (int)g_hwnd, IPC_SETVISWND);
+
+			EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
+			EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
+			EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
+			EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
+			EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
+			EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_ENABLED);
+		}
+	}
+	break;
+	case IDM_PLUGIN_RENDER:
+		EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_DISABLED);
+		EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_ENABLED);
+		stop = false;
+		renderingThread = std::make_unique<std::thread>(renderingCalls);
+		break;
+	case IDM_PLUGIN_STOPRENDERING:
+		EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
+		EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
+		stop = true;
+		renderingThread.get()->join();
+		renderingThread.release();
+		renderingThread = std::unique_ptr<std::thread>(nullptr);
+		break;
+	case IDM_PLUGIN_QUIT:
+		EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_ENABLED);
+		EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
+		EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
+		EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_DISABLED);
+		EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
+		EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_DISABLED);
+		lpWinampVisModule->Quit(lpWinampVisModule);
+		if (handleLib != NULL) FreeLibrary(handleLib);
+		handleLib = NULL;
+		break;
+	default:
+		return DefWindowProc(hWnd, message, wParam, lParam);
+	}
+	return 0;
 }
 
 //
@@ -158,196 +321,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch (message)
     {
     case WM_COMMAND:
-        {
-            int wmId = LOWORD(wParam);
-            // Analyse les sélections de menu :
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            case IDM_PLUGIN_LOAD:
-			    {
-                    WCHAR strFile[128];
-                    ZeroMemory(&strFile, sizeof(strFile));
-                    OPENFILENAME open;
-                    ZeroMemory(&open, sizeof(open));
-                    open.lStructSize = sizeof(OPENFILENAME);
-                    open.hwndOwner = hWnd;
-                    open.nFileOffset = 0;
-                    open.lpstrFile = strFile;
-                    open.lpstrFile[0] = '\0';
-                    open.nMaxFile = sizeof(strFile);
-                    open.lpstrInitialDir = L"C:\\Winamp\\Plugins\\";
-                    //open.lpstrInitialDir = L"C:\\PROGRA~2\\Winamp\\Plugins\\";
-                    open.lpstrFilter = L"Dll\0vis*.dll\0";
-                    open.lpstrTitle = L"Plugin Winamp";
-                    open.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
-
-                    if(GetOpenFileName(&open))
-                    {
-
-                        //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\monkey\\vis_monkey.dll", NULL, NULL);
-                        //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_monkey.dll", NULL, NULL);
-                        // C:\Program Files (x86)\Winamp\Plugins
-                        //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
-                        //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_avs.dll", NULL, NULL);
-                        //handleLib = LoadLibraryEx(L"C:\\PROGRA~2\\Winamp\\Plugins\\vis_milk2.dll", NULL, NULL);
-                        //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_lhd.dll", NULL, NULL);
-                        //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\LHDance\\Plugins\\vis_lhd.dll", NULL, NULL);
-                        //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\others\\vis_milk2.dll", NULL, NULL);
-                        //handleLib = LoadLibraryEx(L"C:\\Winamp\\Plugins\\vis_rave.dll", NULL, NULL);
-                        handleLib = LoadLibraryEx(strFile, NULL, NULL);
-                        if (handleLib == NULL)
-                        {
-                            dealWithError(hWnd);
-                        }
-                        else
-                        {
-                            WinampVisGetHeader lpFunc = (WinampVisGetHeader)GetProcAddress(handleLib, "winampVisGetHeader");
-                            if (lpFunc == NULL)
-                            {
-                                dealWithError(hWnd);
-                            }
-                            else
-                            {
-                                auto lpModule = lpFunc();
-                                lpWinampVisModule = lpModule->getModule(0);
-                                lpWinampVisModule->hwndParent = hWnd;
-                                lpWinampVisModule->hDllInstance = handleLib;
-
-                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
-                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_ENABLED);
-                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_ENABLED);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        /*
-                        auto dwError = CommDlgExtendedError();
-                        LPTSTR lpMsgBuf;
-
-                        FormatMessage(
-                            FORMAT_MESSAGE_ALLOCATE_BUFFER |
-                            FORMAT_MESSAGE_FROM_SYSTEM |
-                            FORMAT_MESSAGE_IGNORE_INSERTS,
-                            NULL,
-                            dwError,
-                            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                            (LPTSTR)&lpMsgBuf,
-                            0, NULL);
-
-                        //std::wcout << (LPTSTR)lpMsgBuf << std::endl;
-                        MessageBox(hWnd, lpMsgBuf, L"Erreur au chargement de la dll", MB_ICONERROR);
-                        */
-                    }
-			    }
-                break;
-            case IDM_PLUGIN_CONFIG:
-                {
-                    auto resConfig = lpWinampVisModule->Config(lpWinampVisModule);
-                }
-                break;
-            case IDM_PLUGIN_INIT:
-                {
-                    lpWinampVisModule->nCh = 2;
-                    lpWinampVisModule->latencyMs = 0;
-                    lpWinampVisModule->delayMs = 15;
-                    lpWinampVisModule->sRate = 44100;
-                    lpWinampVisModule->spectrumNCh = 2;
-                    //lpWinampVisModule->spectrumData;
-                    ZeroMemory(lpWinampVisModule->spectrumData, sizeof(unsigned char) * sizeof(lpWinampVisModule->spectrumData));
-                    lpWinampVisModule->waveformNCh = 2;
-                    //lpWinampVisModule->waveformData;
-                    ZeroMemory(lpWinampVisModule->waveformData, sizeof(unsigned char) * sizeof(lpWinampVisModule->waveformData));
-
-                    std::random_device rd; // To get a random seed.
-                    std::mt19937 mt(rd()); // The actual randomizer.
-                    std::uniform_int_distribution<int> dist(0, 255);
-
-					for (int i = 0; i < 2; ++i)
-					{
-						for (int j = 0; j < 576; ++j)
-						{
-							lpWinampVisModule->spectrumData[i][j] = dist(mt);
-							lpWinampVisModule->waveformData[i][j] = dist(mt);
-						}
-					}
-
-                    auto resInit = lpWinampVisModule->Init(lpWinampVisModule);
-
-                    if(0 == resInit)
-                    {
-                        // Sent by plugin before displaying its window :
-                        // SendMessage(this_mod->hwndParent, WM_WA_IPC, (int)g_hwnd, IPC_SETVISWND);
-                        /*MSG msg;
-                        BOOL bRet;
-                        while (bRet = GetMessage(&msg, NULL, 0, 0) != 0)
-                        {
-                            if (bRet == -1)
-                            {
-                            }
-                            else if (msg.message != WM_WA_IPC)
-                            {
-                                TranslateMessage(&msg);
-                                DispatchMessage(&msg);
-                            }
-                            else
-                            {
-                                // Le plugin a fait son boulot...
-                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
-                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
-                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
-                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
-                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
-                                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_ENABLED);
-                                break;
-                            }
-                        }*/
-
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_DISABLED);
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
-                        EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_ENABLED);
-                    }
-                }
-                break;
-            case IDM_PLUGIN_RENDER:
-				EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_DISABLED);
-				EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_ENABLED);
-                stop = false;
-				renderingThread = std::make_unique<std::thread>(renderingCalls);
-                break;
-            case IDM_PLUGIN_STOPRENDERING:
-                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_ENABLED);
-                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
-                stop = true;
-                renderingThread.get()->join();
-                renderingThread.release();
-                renderingThread = std::unique_ptr<std::thread>(nullptr);
-                break;
-            case IDM_PLUGIN_QUIT:
-                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_LOAD, MF_ENABLED);
-                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_CONFIG, MF_DISABLED);
-                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_INIT, MF_DISABLED);
-                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_RENDER, MF_DISABLED);
-                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_STOPRENDERING, MF_DISABLED);
-                EnableMenuItem(GetMenu(hWnd), IDM_PLUGIN_QUIT, MF_DISABLED);
-                lpWinampVisModule->Quit(lpWinampVisModule);
-                if(handleLib != NULL) FreeLibrary(handleLib);
-                handleLib = NULL;
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
-        }
-        break;
+		return WndCommand(hWnd, message, wParam, lParam);
     case WM_PAINT:
         {
             PAINTSTRUCT ps;
@@ -369,10 +343,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         PostQuitMessage(0);
 		break;
 	case WM_WA_IPC: // Winamp messages.
-	{
-        return winampCommands(hWnd, message, wParam, lParam);
-	}
-	break;
+        return WinampCommands(hWnd, message, wParam, lParam);
 	default:
 		return DefWindowProc(hWnd, message, wParam, lParam);
 	}
@@ -429,7 +400,7 @@ void renderingCalls()
             stop = true;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        std::this_thread::sleep_for(std::chrono::milliseconds(lpWinampVisModule->delayMs));
 
     } while (!stop);
 }
